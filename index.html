@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Metinden İşaret Diline Çevirmen</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Inter", sans-serif;
+        background-color: #1a202c;
+        color: #e2e8f0;
+        overflow: hidden;
+        touch-action: none;
+      }
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+      }
+      .container {
+        position: relative;
+        width: 100vw;
+        height: 100vh;
+      }
+      .control-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 10;
+        padding: 2.5rem;
+        background-color: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(8px);
+        border-radius: 1rem;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        text-align: center;
+      }
+      input[type="text"] {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        background-color: rgba(255, 255, 255, 0.2);
+        border: none;
+        color: white;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        outline: none;
+        transition: background-color 0.3s;
+      }
+      input[type="text"]:focus {
+        background-color: rgba(255, 255, 255, 0.3);
+      }
+      button {
+        width: 100%;
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        background-color: #4a5568;
+        color: white;
+        font-weight: bold;
+        border: none;
+        cursor: pointer;
+        transition: background-color 0.3s, transform 0.1s;
+      }
+      button:hover {
+        background-color: #2d3748;
+        transform: translateY(-2px);
+      }
+      #instructions {
+        margin-top: 1rem;
+        font-size: 0.875rem;
+        color: #cbd5e0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <canvas id="3d-canvas" class="absolute inset-0 z-0"></canvas>
+      <div class="control-panel">
+        <h1 class="text-3xl font-bold text-white mb-4">
+          Metinden İşaret Diline
+        </h1>
+        <input
+          type="text"
+          id="text-input"
+          placeholder="Bir kelime veya harf yazın..."
+        />
+        <button id="translate-button">Çevir</button>
+        <div id="instructions">
+          3D modeli görmek için butona basın. <br />
+          Fare ile modeli döndürebilir ve yakınlaştırabilirsiniz.
+        </div>
+      </div>
+    </div>
+
+    <script type="module">
+      import * as THREE from "https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js";
+      import { OrbitControls } from "https://cdn.jsdelivr.net/npm/three@0.128.0/examples/jsm/controls/OrbitControls.js";
+
+      // --- 1. SAHNE VE 3D ORTAMI KURMA ---
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(
+        75,
+        window.innerWidth / window.innerHeight,
+        0.1,
+        1000
+      );
+      const renderer = new THREE.WebGLRenderer({
+        canvas: document.getElementById("3d-canvas"),
+        antialias: true,
+        alpha: true,
+      });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setClearColor(0x000000, 0);
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      camera.position.z = 8;
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+
+      // Işıklandırma
+      scene.add(new THREE.AmbientLight(0x404040));
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+      directionalLight.position.set(5, 5, 5).normalize();
+      scene.add(directionalLight);
+
+      // İşaretleri tutacak grup
+      const signGroup = new THREE.Group();
+      scene.add(signGroup);
+
+      // --- 2. 3D İŞARET DİLİ MODELLERİ ---
+      const signModels = {
+        A: [
+          [0, 0, 0],
+          [0, 1.5, 0],
+          [0, 2.5, 0],
+          [0, 3.5, 0],
+          [0, 4.5, 0],
+          [1, 1, 0],
+          [1.5, 2, 0],
+          [1.5, 3, 0],
+          [1.5, 4, 0],
+          [2, 1, 0],
+          [2.5, 2, 0],
+          [2.5, 3, 0],
+          [2.5, 4, 0],
+          [-1, 1, 0],
+          [-1.5, 2, 0],
+          [-1.5, 3, 0],
+          [-1.5, 4, 0],
+          [-2, 1, 0],
+          [-2.5, 2, 0],
+          [-2.5, 3, 0],
+          [-2.5, 4, 0],
+        ],
+        B: [
+          [0, 0, 0],
+          [0, 1.5, 0],
+          [0, 2.5, 0],
+          [0, 3.5, 0],
+          [0, 4.5, 0],
+          [1, 1, 0],
+          [1, 2, 0],
+          [1, 3, 0],
+          [1, 4, 0],
+          [2, 1, 0],
+          [2, 2, 0],
+          [2, 3, 0],
+          [2, 4, 0],
+          [-1, 1, 0],
+          [-1, 2, 0],
+          [-1, 3, 0],
+          [-1, 4, 0],
+          [-2, 1, 0],
+          [-2, 2, 0],
+          [-2, 3, 0],
+          [-2, 4, 0],
+        ],
+        C: [
+          [0, 0, 0],
+          [0, 1.5, 0],
+          [0, 2.5, 0],
+          [0, 3.5, 0],
+          [0, 4.5, 0],
+          [1, 1, 0],
+          [1, 2, 0],
+          [1, 3, 0],
+          [1, 4, 0],
+          [2, 1, 0],
+          [2, 2, 0],
+          [2, 3, 0],
+          [2, 4, 0],
+          [-1, 1, 0],
+          [-1, 2, 0],
+          [-1, 3, 0],
+          [-1, 4, 0],
+          [-2, 1, 0],
+          [-2, 2, 0],
+          [-2, 3, 0],
+          [-2, 4, 0],
+        ],
+        D: [
+          [0, 0, 0],
+          [0, 1.5, 0],
+          [0, 2.5, 0],
+          [0, 3.5, 0],
+          [0, 4.5, 0],
+          [1, 1, 0],
+          [1.5, 2, 0],
+          [1.5, 3, 0],
+          [1.5, 4, 0],
+          [2, 1, 0],
+          [2, 2, 0],
+          [2, 3, 0],
+          [2, 4, 0],
+          [-1, 1, 0],
+          [-1, 2, 0],
+          [-1, 3, 0],
+          [-1, 4, 0],
+          [-2, 1, 0],
+          [-2, 2, 0],
+          [-2, 3, 0],
+          [-2, 4, 0],
+        ],
+      };
+
+      function createSign(char, positionX) {
+        const model = new THREE.Group();
+        const positions = signModels[char.toUpperCase()];
+        if (!positions) {
+          return;
+        }
+
+        const jointMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
+        const boneMaterial = new THREE.LineBasicMaterial({ color: 0xffffff });
+
+        positions.forEach((pos) => {
+          const geometry = new THREE.SphereGeometry(0.2, 16, 16);
+          const joint = new THREE.Mesh(geometry, jointMaterial);
+          joint.position.set(pos[0], pos[1], pos[2]);
+          model.add(joint);
+        });
+
+        const connections = [
+          [0, 1],
+          [1, 2],
+          [2, 3],
+          [3, 4],
+          [5, 6],
+          [6, 7],
+          [7, 8],
+          [8, 9],
+          [10, 11],
+          [11, 12],
+          [12, 13],
+          [13, 14],
+          [15, 16],
+          [16, 17],
+          [17, 18],
+          [18, 19],
+          [20, 21],
+          [21, 22],
+          [22, 23],
+          [23, 24],
+        ];
+
+        connections.forEach((conn) => {
+          const points = [];
+          points.push(new THREE.Vector3().fromArray(positions[conn[0]]));
+          points.push(new THREE.Vector3().fromArray(positions[conn[1]]));
+
+          const geometry = new THREE.BufferGeometry().setFromPoints(points);
+          const line = new THREE.Line(geometry, boneMaterial);
+          model.add(line);
+        });
+
+        model.position.x = positionX;
+        signGroup.add(model);
+      }
+
+      const textInput = document.getElementById("text-input");
+      const translateButton = document.getElementById("translate-button");
+
+      translateButton.addEventListener("click", () => {
+        const text = textInput.value;
+        signGroup.clear();
+
+        if (text.length === 0) {
+          return;
+        }
+
+        const wordLength = text.length;
+        const startX = -(wordLength / 2) * 5;
+
+        for (let i = 0; i < wordLength; i++) {
+          const char = text[i];
+          createSign(char, startX + i * 5);
+        }
+      });
+
+      function animate() {
+        requestAnimationFrame(animate);
+        controls.update();
+        renderer.render(scene, camera);
+      }
+
+      window.onload = function () {
+        animate();
+      };
+
+      window.addEventListener("resize", () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    </script>
+  </body>
+</html>
